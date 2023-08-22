@@ -1,0 +1,71 @@
+#import <SceneKit/SceneKit.h>
+
+@interface ViewController : UIViewController
+@property (nonatomic, strong) SCNView *sceneView;
+@property (nonatomic, strong) SCNNode *cameraNode;
+@property (nonatomic, strong) NSMutableArray<SCNNode *> *waypoints;
+@end
+
+@implementation ViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    // 初始化SceneKit视图
+    self.sceneView = [[SCNView alloc] initWithFrame:self.view.bounds];
+    self.sceneView.scene = [SCNScene scene];
+    [self.view addSubview:self.sceneView];
+    
+    // 创建相机节点
+    self.cameraNode = [SCNNode node];
+    self.cameraNode.camera = [SCNCamera camera];
+    [self.sceneView.scene.rootNode addChildNode:self.cameraNode];
+    
+    // 创建轨迹线上的点集合
+    NSArray<SCNVector3> *pathPoints = @[
+        SCNVector3Make(0, 0, 0),
+        SCNVector3Make(10, 10, 10),
+        // ... 添加更多的点
+    ];
+    
+    // 在每个点上放置一个路标
+    self.waypoints = [NSMutableArray array];
+    for (SCNVector3 point in pathPoints) {
+        SCNNode *waypoint = [SCNNode nodeWithGeometry:[SCNSphere sphereWithRadius:1.0]];
+        waypoint.position = point;
+        [self.sceneView.scene.rootNode addChildNode:waypoint];
+        [self.waypoints addObject:waypoint];
+    }
+    
+    // 开始动画
+    [self startAnimation];
+}
+
+- (void)startAnimation {
+    // 移动相机的动画
+    SCNAction *moveCamera = [SCNAction followPath:[self pathFromWaypoints] asOffset:NO orientToPath:YES duration:10.0];
+    [self.cameraNode runAction:moveCamera];
+    
+    // 刷新路标的动画
+    for (SCNNode *waypoint in self.waypoints) {
+        SCNAction *moveWaypoint = [SCNAction moveTo:waypoint.position duration:0.5];
+        SCNAction *removeWaypoint = [SCNAction removeFromParentNode];
+        SCNAction *sequence = [SCNAction sequence:@[moveWaypoint, removeWaypoint]];
+        [waypoint runAction:sequence];
+    }
+}
+
+- (CGPathRef)pathFromWaypoints {
+    UIBezierPath *path = [UIBezierPath bezierPath];
+    for (int i = 0; i < self.waypoints.count; i++) {
+        SCNNode *waypoint = self.waypoints[i];
+        if (i == 0) {
+            [path moveToPoint:CGPointMake(waypoint.position.x, waypoint.position.y)];
+        } else {
+            [path addLineToPoint:CGPointMake(waypoint.position.x, waypoint.position.y)];
+        }
+    }
+    return path.CGPath;
+}
+
+@end
