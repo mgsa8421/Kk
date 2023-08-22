@@ -69,3 +69,37 @@
 }
 
 @end
+
+
+如果模型背对着您，那么可能是模型的前方（通常是Z轴）与您期望的方向不匹配。此外，左右倾斜可能是由于`lookAt`方法使模型的上方（Y轴）尝试与世界坐标的Y轴对齐所导致的。
+
+为了修正这些问题，您可以采取以下步骤：
+
+1. **修正模型的朝向**：您可以通过旋转模型来确保其正面朝向您期望的方向。
+
+2. **设置模型的上方**：使用`lookAt:up:localFront:`方法来明确指定模型的上方和前方。
+
+以下是如何实现这些修正的代码示例：
+
+```objc
+// 在renderer:updateAtTime:方法中更新模型的朝向
+- (void)renderer:(id<SCNSceneRenderer>)renderer updateAtTime:(NSTimeInterval)time {
+    // ... 其他代码 ...
+
+    // 遍历场景中的所有模型节点，并使它们朝向相机
+    [self.sceneView.scene.rootNode.childNodes enumerateObjectsUsingBlock:^(SCNNode * _Nonnull node, NSUInteger idx, BOOL * _Nonnull stop) {
+        if ([node.geometry isKindOfClass:[SCNBox class]]) { // 这里只是一个示例，您应该根据您的模型来判断
+
+            // 明确指定模型的上方和前方
+            SCNVector3 upDirection = SCNVector3Make(0, 1, 0); // 世界坐标的Y轴
+            SCNVector3 frontDirection = SCNVector3Make(0, 0, 1); // 模型的前方，这可能需要根据您的模型进行调整
+
+            [node lookAt:self.cameraNode.position up:upDirection localFront:frontDirection];
+        }
+    }];
+}
+```
+
+请注意，您可能需要调整`frontDirection`来确保模型的正面朝向您期望的方向。这取决于模型的初始方向。
+
+希望这可以帮助您修正模型的方向！
