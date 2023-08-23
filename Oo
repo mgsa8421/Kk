@@ -163,3 +163,20 @@ rotationAnimation.duration = 2.0;
 [node addAnimation:scaleAnimation forKey:@"scaleChange"];
 [node addAnimation:rotationAnimation forKey:@"rotationChange"];
 
+
+// 创建一个基于"eulerAngles.y"关键路径的基础动画
+CABasicAnimation *rotationAnimation = [CABasicAnimation animationWithKeyPath:@"eulerAngles.y"];
+
+// 设置起始值和终止值
+rotationAnimation.fromValue = @(0);                     // 起始角度: 0度
+rotationAnimation.toValue = @(2 * M_PI);                 // 终止角度: 360度 (2π)
+
+// 设置动画的其他属性
+rotationAnimation.duration = 5.0;                        // 动画时长: 5秒
+rotationAnimation.repeatCount = 1;                       // 重复次数: 1次
+rotationAnimation.fillMode = kCAFillModeForwards;        // 保持动画结束时的状态
+rotationAnimation.removedOnCompletion = NO;              // 动画结束后不移除
+
+// 将动画添加到节点
+[node addAnimation:rotationAnimation forKey:@"rotationAnimation"];
+
