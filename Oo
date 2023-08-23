@@ -103,3 +103,63 @@
 请注意，您可能需要调整`frontDirection`来确保模型的正面朝向您期望的方向。这取决于模型的初始方向。
 
 希望这可以帮助您修正模型的方向！
+
+当你有一个需要与视频同步的动画时，确实可能遇到这种问题，尤其是当使用`SCNAction`时。因为`SCNAction`是基于它开始的时间来计算动画进度的，并不容易对其进行外部控制。
+
+如果你需要更多的控制权来确保动画与视频同步，那么使用`SCNAnimatable`接口和手动的动画控制可能是更好的选择。具体来说，`CAAnimation`或其子类`CABasicAnimation`可能是你需要的。这样，你可以基于视频的时间戳来设置和更新动画的进度。
+
+以下是一个简化的示例，展示了如何使用`CABasicAnimation`来控制一个节点的位置：
+
+```objective-c
+CABasicAnimation *positionAnimation = [CABasicAnimation animationWithKeyPath:@"position"];
+positionAnimation.fromValue = [NSValue valueWithSCNVector3:SCNVector3Make(0, 0, 0)];
+positionAnimation.toValue = [NSValue valueWithSCNVector3:SCNVector3Make(10, 0, 0)];
+positionAnimation.duration = videoDuration;  // 视频的总时长
+
+// 此时不要直接将动画添加到节点上
+// yourNode addAnimation:positionAnimation forKey:@"move"];
+```
+
+随后，在你的更新循环中：
+
+```objective-c
+NSTimeInterval videoTimestamp = ...;  // 获取视频的当前时间戳
+
+// 根据视频的时间戳计算动画的时间进度
+positionAnimation.timeOffset = videoTimestamp;
+
+// 将动画添加到节点上，这样它将从指定的timeOffset开始
+[yourNode addAnimation:positionAnimation forKey:@"move"];
+```
+
+这样，无论何时你的视频时间戳改变，动画都会与其保持同步。如果你拖动视频的进度条，只需更新`timeOffset`并重新添加动画，动画就会与新的视频位置同步。
+
+需要注意的是，每次视频时间戳更改时，你可能需要从节点上移除旧的动画并添加新的动画，以确保它们始终保持同步。
+
+这只是一个简化的示例，你可能需要根据实际情况进行调整。但希望这能给你提供一个方向。
+
+SCNNode *node = ...; // 你的节点
+
+// 移动动画
+CABasicAnimation *positionAnimation = [CABasicAnimation animationWithKeyPath:@"position.x"];
+positionAnimation.fromValue = @0.0;
+positionAnimation.toValue = @10.0;
+positionAnimation.duration = 2.0;
+
+// 缩放动画
+CABasicAnimation *scaleAnimation = [CABasicAnimation animationWithKeyPath:@"scale.x"];
+scaleAnimation.fromValue = @1.0;
+scaleAnimation.toValue = @2.0;
+scaleAnimation.duration = 2.0;
+
+// 旋转动画
+CABasicAnimation *rotationAnimation = [CABasicAnimation animationWithKeyPath:@"rotation.z"];
+rotationAnimation.fromValue = @0.0;
+rotationAnimation.toValue = @(M_PI); // 旋转180度
+rotationAnimation.duration = 2.0;
+
+// 将动画添加到节点上
+[node addAnimation:positionAnimation forKey:@"positionChange"];
+[node addAnimation:scaleAnimation forKey:@"scaleChange"];
+[node addAnimation:rotationAnimation forKey:@"rotationChange"];
+
