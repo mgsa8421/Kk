@@ -225,3 +225,16 @@ BOOL shouldStartAnimationBasedOnLogic() {
 ```
 
 其中，`animationStartTime` 是你首次触发动画的时间戳。这样，你就可以确保动画始终与视频同步，无论何时开始。
+
+#import <SceneKit/SceneKit.h>
+#import <CoreImage/CoreImage.h>
+
+// ...
+
+SCNNode *yourNode = ...;  // 获取或创建你想要添加辉光效果的节点
+
+CIFilter *bloomFilter = [CIFilter filterWithName:@"CIBloom"];
+[bloomFilter setValue:@(10.0) forKey:@"inputIntensity"];  // 辉光强度
+[bloomFilter setValue:@(2.0) forKey:@"inputRadius"];  // 辉光半径
+
+yourNode.filters = @[bloomFilter];
