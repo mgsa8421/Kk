@@ -180,3 +180,48 @@ rotationAnimation.removedOnCompletion = NO;              // 动画结束后不�
 // 将动画添加到节点
 [node addAnimation:rotationAnimation forKey:@"rotationAnimation"];
 
+
+明白了，根据你的新描述，这是你可以考虑的策略：
+
+1. **动画的创建**:
+   创建一个 `CABasicAnimation` 来定义你想要的动画。但是不要立即将其添加到节点上。这样，你就可以根据逻辑决定何时触发它。
+
+2. **检查触发条件**:
+   在渲染循环中，当满足某个条件时（例如，节点模型首次显示），添加动画到节点上。为了防止动画立即播放，你可以设置动画的 `beginTime` 为一个较大的值（比如 `CFAbsoluteTimeGetCurrent() + 10000`）。
+
+3. **控制动画的播放**:
+   在每次渲染循环中，你可以检查视频的当前时间戳并使用它来计算动画应该播放到哪里。然后，你可以调整动画的 `timeOffset` 属性来控制动画的播放进度。这样，每当你拖动视频的进度条或暂停/播放视频时，都可以确保动画与视频保持同步。
+
+以下是伪代码示范：
+
+```objc
+// 1. 动画的创建
+CABasicAnimation *rotationAnimation = [CABasicAnimation animationWithKeyPath:@"rotation"];
+rotationAnimation.toValue = [NSValue valueWithSCNVector4:SCNVector4Make(0, 1, 0, M_PI * 2)];
+rotationAnimation.duration = 5; // 假设动画时长为5秒
+rotationAnimation.beginTime = CFAbsoluteTimeGetCurrent() + 10000; // 防止动画立即开始
+
+BOOL animationAdded = NO;
+
+// 2. 渲染循环
+- (void)renderLoopWithVideoTimestamp:(NSTimeInterval)timestamp {
+    // 检查是否满足触发条件
+    if (shouldStartAnimationBasedOnLogic() && !animationAdded) {
+        [node addAnimation:rotationAnimation forKey:@"rotationAnimation"];
+        animationAdded = YES;
+    }
+
+    // 3. 控制动画的播放
+    if (animationAdded) {
+        rotationAnimation.timeOffset = timestamp - animationStartTime;
+    }
+}
+
+BOOL shouldStartAnimationBasedOnLogic() {
+    // 根据你的逻辑判断是否应该开始动画
+    // 例如: 检查节点是否首次被渲染
+    return YES/NO;
+}
+```
+
+其中，`animationStartTime` 是你首次触发动画的时间戳。这样，你就可以确保动画始终与视频同步，无论何时开始。
