@@ -226,6 +226,76 @@ BOOL shouldStartAnimationBasedOnLogic() {
 
 其中，`animationStartTime` 是你首次触发动画的时间戳。这样，你就可以确保动画始终与视频同步，无论何时开始。
 
+
+当然可以，基于你提供的CIKernel函数和之前的示例，以下是一个完整的自定义`CIFilter`实现来使用该`CIKernel`：
+
+1. **CIKernel字符串**：
+
+假设你将以下CIKernel保存在名为`BrightnessKernel.cikernel`的文件中：
+
+```c
+kernel vec4 brightnessAdjust(sampler image, float amount) {
+    vec2 uv = samplerCoord(image);
+    vec4 color = sample(image, uv);
+    return color + vec4(amount, amount, amount, 0.0);
+}
+```
+
+2. **自定义CIFilter**：
+
+```objc
+#import <CoreImage/CoreImage.h>
+
+@interface BrightnessAdjustFilter : CIFilter
+
+@property (nonatomic, retain) CIImage *inputImage;
+@property (nonatomic, retain) NSNumber *inputAmount;
+
+@end
+
+@implementation BrightnessAdjustFilter {
+    CIKernel *_brightnessKernel;
+}
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        // 加载 CIKernel 字符串
+        NSString *kernelString = [NSString stringWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"BrightnessKernel" ofType:@"cikernel"] encoding:NSUTF8StringEncoding error:nil];
+        _brightnessKernel = [CIKernel kernelWithString:kernelString];
+    }
+    return self;
+}
+
+- (CIImage *)outputImage {
+    if (!_inputImage) return nil;
+    
+    CGFloat amount = _inputAmount ? _inputAmount.floatValue : 0.0;
+    
+    // 应用 CIKernel
+    return [_brightnessKernel applyWithExtent:_inputImage.extent
+                                      roiCallback:^CGRect(int index, CGRect destRect) {
+                                          return destRect;
+                                      }
+                                     arguments:@[_inputImage, @(amount)]];
+}
+
+@end
+```
+
+3. **使用自定义过滤器**：
+
+```objc
+// 创建并初始化过滤器
+BrightnessAdjustFilter *filter = [[BrightnessAdjustFilter alloc] init];
+filter.inputImage = [[CIImage alloc] initWithImage:[UIImage imageNamed:@"yourImageName"]];
+filter.inputAmount = @(0.1);  // 提升的亮度值，例如0.1
+
+// 获取输出图像
+CIImage *outputImage = filter.outputImage;
+```
+
+这样，你就可以使用你的自定义`BrightnessAdjustFilter`过滤器来调整图像的亮度了。确保你已经正确包含了`BrightnessKernel.cikernel`文件并且它能够在项目中被找到。
 #import <SceneKit/SceneKit.h>
 #import <CoreImage/CoreImage.h>
 
