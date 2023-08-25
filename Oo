@@ -1,310 +1,71 @@
-#import <SceneKit/SceneKit.h>
+在SceneKit中，动画默认是在节点的局部坐标系上应用的，除非另有指定。这意味着当你为节点设置旋转动画时，它会根据该节点当前的旋转状态（或其他变换状态）进行相对旋转。
 
-@interface ViewController : UIViewController
-@property (nonatomic, strong) SCNView *sceneView;
-@property (nonatomic, strong) SCNNode *cameraNode;
-@property (nonatomic, strong) NSMutableArray<SCNNode *> *waypoints;
-@end
+你提到的 `lookAt:` 方法确实会改变节点的旋转，使其面向某个位置。如果你在调用 `lookAt:` 后再应用旋转动画，那么动画将在 `lookAt:` 设置的旋转基础上进行。
 
-@implementation ViewController
+给定你的需求，你想让路标节点绕其自己的Z轴旋转一周。这里的代码确实可以达到这样的效果。但为了更加明确，我们可以稍作调整：
 
-- (void)viewDidLoad {
-    [super viewDidLoad];
-    
-    // 初始化SceneKit视图
-    self.sceneView = [[SCNView alloc] initWithFrame:self.view.bounds];
-    self.sceneView.scene = [SCNScene scene];
-    [self.view addSubview:self.sceneView];
-    
-    // 创建相机节点
-    self.cameraNode = [SCNNode node];
-    self.cameraNode.camera = [SCNCamera camera];
-    [self.sceneView.scene.rootNode addChildNode:self.cameraNode];
-    
-    // 创建轨迹线上的点集合
-    NSArray<SCNVector3> *pathPoints = @[
-        SCNVector3Make(0, 0, 0),
-        SCNVector3Make(10, 10, 10),
-        // ... 添加更多的点
-    ];
-    
-    // 在每个点上放置一个路标
-    self.waypoints = [NSMutableArray array];
-    for (SCNVector3 point in pathPoints) {
-        SCNNode *waypoint = [SCNNode nodeWithGeometry:[SCNSphere sphereWithRadius:1.0]];
-        waypoint.position = point;
-        [self.sceneView.scene.rootNode addChildNode:waypoint];
-        [self.waypoints addObject:waypoint];
-    }
-    
-    // 开始动画
-    [self startAnimation];
-}
+1. 旋转起点：由于你已经使用 `lookAt:` 设置了路标的朝向，所以这就是动画的起始点。
 
-- (void)startAnimation {
-    // 移动相机的动画
-    SCNAction *moveCamera = [SCNAction followPath:[self pathFromWaypoints] asOffset:NO orientToPath:YES duration:10.0];
-    [self.cameraNode runAction:moveCamera];
-    
-    // 刷新路标的动画
-    for (SCNNode *waypoint in self.waypoints) {
-        SCNAction *moveWaypoint = [SCNAction moveTo:waypoint.position duration:0.5];
-        SCNAction *removeWaypoint = [SCNAction removeFromParentNode];
-        SCNAction *sequence = [SCNAction sequence:@[moveWaypoint, removeWaypoint]];
-        [waypoint runAction:sequence];
-    }
-}
+2. 旋转终点：你想让它绕Z轴旋转一周，所以我们只需要设置旋转动画的 `toValue` 为绕Z轴的360度。
 
-- (CGPathRef)pathFromWaypoints {
-    UIBezierPath *path = [UIBezierPath bezierPath];
-    for (int i = 0; i < self.waypoints.count; i++) {
-        SCNNode *waypoint = self.waypoints[i];
-        if (i == 0) {
-            [path moveToPoint:CGPointMake(waypoint.position.x, waypoint.position.y)];
-        } else {
-            [path addLineToPoint:CGPointMake(waypoint.position.x, waypoint.position.y)];
-        }
-    }
-    return path.CGPath;
-}
-
-@end
-
-
-如果模型背对着您，那么可能是模型的前方（通常是Z轴）与您期望的方向不匹配。此外，左右倾斜可能是由于`lookAt`方法使模型的上方（Y轴）尝试与世界坐标的Y轴对齐所导致的。
-
-为了修正这些问题，您可以采取以下步骤：
-
-1. **修正模型的朝向**：您可以通过旋转模型来确保其正面朝向您期望的方向。
-
-2. **设置模型的上方**：使用`lookAt:up:localFront:`方法来明确指定模型的上方和前方。
-
-以下是如何实现这些修正的代码示例：
+更新后的动画创建部分如下：
 
 ```objc
-// 在renderer:updateAtTime:方法中更新模型的朝向
-- (void)renderer:(id<SCNSceneRenderer>)renderer updateAtTime:(NSTimeInterval)time {
-    // ... 其他代码 ...
-
-    // 遍历场景中的所有模型节点，并使它们朝向相机
-    [self.sceneView.scene.rootNode.childNodes enumerateObjectsUsingBlock:^(SCNNode * _Nonnull node, NSUInteger idx, BOOL * _Nonnull stop) {
-        if ([node.geometry isKindOfClass:[SCNBox class]]) { // 这里只是一个示例，您应该根据您的模型来判断
-
-            // 明确指定模型的上方和前方
-            SCNVector3 upDirection = SCNVector3Make(0, 1, 0); // 世界坐标的Y轴
-            SCNVector3 frontDirection = SCNVector3Make(0, 0, 1); // 模型的前方，这可能需要根据您的模型进行调整
-
-            [node lookAt:self.cameraNode.position up:upDirection localFront:frontDirection];
-        }
-    }];
+- (CABasicAnimation *)createRotationAnimation {
+    CABasicAnimation *rotationAnimation = [CABasicAnimation animationWithKeyPath:@"rotation.z"];
+    rotationAnimation.toValue = @(M_PI * 2);
+    rotationAnimation.duration = 5; // 假设动画时长为5秒
+    rotationAnimation.cumulative = YES;
+    rotationAnimation.additive = YES;
+    return rotationAnimation;
 }
 ```
 
-请注意，您可能需要调整`frontDirection`来确保模型的正面朝向您期望的方向。这取决于模型的初始方向。
+这里，我们用 `rotation.z` 作为 `keyPath` 专门对Z轴进行旋转。同时，我们设置了 `cumulative` 和 `additive` 属性为 `YES`，这意味着动画的效果是在当前节点的旋转基础上进行的，而不是从零开始的。
 
-希望这可以帮助您修正模型的方向！
+现在，这样的代码应该可以实现你的需求：使路标绕其自己的Z轴旋转一周，并在旋转结束后指向原来通过 `lookAt:` 设置的位置。
 
-当你有一个需要与视频同步的动画时，确实可能遇到这种问题，尤其是当使用`SCNAction`时。因为`SCNAction`是基于它开始的时间来计算动画进度的，并不容易对其进行外部控制。
+对，你是正确的。在这个场景下，每个节点都应该有其自己的动画实例。否则，当你试图为一个节点设置动画的属性（例如 `timeOffset`），它可能会影响到其他使用了同一个动画实例的节点。
 
-如果你需要更多的控制权来确保动画与视频同步，那么使用`SCNAnimatable`接口和手动的动画控制可能是更好的选择。具体来说，`CAAnimation`或其子类`CABasicAnimation`可能是你需要的。这样，你可以基于视频的时间戳来设置和更新动画的进度。
-
-以下是一个简化的示例，展示了如何使用`CABasicAnimation`来控制一个节点的位置：
-
-```objective-c
-CABasicAnimation *positionAnimation = [CABasicAnimation animationWithKeyPath:@"position"];
-positionAnimation.fromValue = [NSValue valueWithSCNVector3:SCNVector3Make(0, 0, 0)];
-positionAnimation.toValue = [NSValue valueWithSCNVector3:SCNVector3Make(10, 0, 0)];
-positionAnimation.duration = videoDuration;  // 视频的总时长
-
-// 此时不要直接将动画添加到节点上
-// yourNode addAnimation:positionAnimation forKey:@"move"];
-```
-
-随后，在你的更新循环中：
-
-```objective-c
-NSTimeInterval videoTimestamp = ...;  // 获取视频的当前时间戳
-
-// 根据视频的时间戳计算动画的时间进度
-positionAnimation.timeOffset = videoTimestamp;
-
-// 将动画添加到节点上，这样它将从指定的timeOffset开始
-[yourNode addAnimation:positionAnimation forKey:@"move"];
-```
-
-这样，无论何时你的视频时间戳改变，动画都会与其保持同步。如果你拖动视频的进度条，只需更新`timeOffset`并重新添加动画，动画就会与新的视频位置同步。
-
-需要注意的是，每次视频时间戳更改时，你可能需要从节点上移除旧的动画并添加新的动画，以确保它们始终保持同步。
-
-这只是一个简化的示例，你可能需要根据实际情况进行调整。但希望这能给你提供一个方向。
-
-SCNNode *node = ...; // 你的节点
-
-// 移动动画
-CABasicAnimation *positionAnimation = [CABasicAnimation animationWithKeyPath:@"position.x"];
-positionAnimation.fromValue = @0.0;
-positionAnimation.toValue = @10.0;
-positionAnimation.duration = 2.0;
-
-// 缩放动画
-CABasicAnimation *scaleAnimation = [CABasicAnimation animationWithKeyPath:@"scale.x"];
-scaleAnimation.fromValue = @1.0;
-scaleAnimation.toValue = @2.0;
-scaleAnimation.duration = 2.0;
-
-// 旋转动画
-CABasicAnimation *rotationAnimation = [CABasicAnimation animationWithKeyPath:@"rotation.z"];
-rotationAnimation.fromValue = @0.0;
-rotationAnimation.toValue = @(M_PI); // 旋转180度
-rotationAnimation.duration = 2.0;
-
-// 将动画添加到节点上
-[node addAnimation:positionAnimation forKey:@"positionChange"];
-[node addAnimation:scaleAnimation forKey:@"scaleChange"];
-[node addAnimation:rotationAnimation forKey:@"rotationChange"];
-
-
-// 创建一个基于"eulerAngles.y"关键路径的基础动画
-CABasicAnimation *rotationAnimation = [CABasicAnimation animationWithKeyPath:@"eulerAngles.y"];
-
-// 设置起始值和终止值
-rotationAnimation.fromValue = @(0);                     // 起始角度: 0度
-rotationAnimation.toValue = @(2 * M_PI);                 // 终止角度: 360度 (2π)
-
-// 设置动画的其他属性
-rotationAnimation.duration = 5.0;                        // 动画时长: 5秒
-rotationAnimation.repeatCount = 1;                       // 重复次数: 1次
-rotationAnimation.fillMode = kCAFillModeForwards;        // 保持动画结束时的状态
-rotationAnimation.removedOnCompletion = NO;              // 动画结束后不移除
-
-// 将动画添加到节点
-[node addAnimation:rotationAnimation forKey:@"rotationAnimation"];
-
-
-明白了，根据你的新描述，这是你可以考虑的策略：
-
-1. **动画的创建**:
-   创建一个 `CABasicAnimation` 来定义你想要的动画。但是不要立即将其添加到节点上。这样，你就可以根据逻辑决定何时触发它。
-
-2. **检查触发条件**:
-   在渲染循环中，当满足某个条件时（例如，节点模型首次显示），添加动画到节点上。为了防止动画立即播放，你可以设置动画的 `beginTime` 为一个较大的值（比如 `CFAbsoluteTimeGetCurrent() + 10000`）。
-
-3. **控制动画的播放**:
-   在每次渲染循环中，你可以检查视频的当前时间戳并使用它来计算动画应该播放到哪里。然后，你可以调整动画的 `timeOffset` 属性来控制动画的播放进度。这样，每当你拖动视频的进度条或暂停/播放视频时，都可以确保动画与视频保持同步。
-
-以下是伪代码示范：
+基于你的提醒，以下是更新后的伪代码：
 
 ```objc
-// 1. 动画的创建
-CABasicAnimation *rotationAnimation = [CABasicAnimation animationWithKeyPath:@"rotation"];
-rotationAnimation.toValue = [NSValue valueWithSCNVector4:SCNVector4Make(0, 1, 0, M_PI * 2)];
-rotationAnimation.duration = 5; // 假设动画时长为5秒
-rotationAnimation.beginTime = CFAbsoluteTimeGetCurrent() + 10000; // 防止动画立即开始
+NSMutableArray *landmarkNodes; // 你的路标模型节点数组
+SCNNode *cameraNode; // 相机节点
+const float triggerDistance = 10.0; // 当相机在10单位距离内，触发动画
 
-BOOL animationAdded = NO;
-
-// 2. 渲染循环
+// 渲染循环
 - (void)renderLoopWithVideoTimestamp:(NSTimeInterval)timestamp {
-    // 检查是否满足触发条件
-    if (shouldStartAnimationBasedOnLogic() && !animationAdded) {
-        [node addAnimation:rotationAnimation forKey:@"rotationAnimation"];
-        animationAdded = YES;
+    for (SCNNode *landmarkNode in landmarkNodes) {
+        // 如果路标上已经有动画，跳过
+        if ([landmarkNode animationForKey:@"rotationAnimation"]) continue;
+        
+        float distance = [self distanceBetween:cameraNode.position and:landmarkNode.position];
+        if (distance <= triggerDistance) {
+            // 为每个路标创建一个新的动画实例
+            CABasicAnimation *rotationAnimation = [self createRotationAnimation];
+            // 设置动画开始时间为当前时间戳
+            rotationAnimation.beginTime = timestamp;
+            // 添加动画到路标
+            [landmarkNode addAnimation:rotationAnimation forKey:@"rotationAnimation"];
+        }
     }
-
-    // 3. 控制动画的播放
-    if (animationAdded) {
-        rotationAnimation.timeOffset = timestamp - animationStartTime;
-    }
 }
 
-BOOL shouldStartAnimationBasedOnLogic() {
-    // 根据你的逻辑判断是否应该开始动画
-    // 例如: 检查节点是否首次被渲染
-    return YES/NO;
+- (CABasicAnimation *)createRotationAnimation {
+    CABasicAnimation *rotationAnimation = [CABasicAnimation animationWithKeyPath:@"rotation"];
+    rotationAnimation.toValue = [NSValue valueWithSCNVector4:SCNVector4Make(0, 1, 0, M_PI * 2)];
+    rotationAnimation.duration = 5; // 假设动画时长为5秒
+    return rotationAnimation;
 }
-```
 
-其中，`animationStartTime` 是你首次触发动画的时间戳。这样，你就可以确保动画始终与视频同步，无论何时开始。
-
-
-当然可以，基于你提供的CIKernel函数和之前的示例，以下是一个完整的自定义`CIFilter`实现来使用该`CIKernel`：
-
-1. **CIKernel字符串**：
-
-假设你将以下CIKernel保存在名为`BrightnessKernel.cikernel`的文件中：
-
-```c
-kernel vec4 brightnessAdjust(sampler image, float amount) {
-    vec2 uv = samplerCoord(image);
-    vec4 color = sample(image, uv);
-    return color + vec4(amount, amount, amount, 0.0);
+// 计算两点间的距离
+- (float)distanceBetween:(SCNVector3)pointA and:(SCNVector3)pointB {
+    float dx = pointA.x - pointB.x;
+    float dy = pointA.y - pointB.y;
+    float dz = pointA.z - pointB.z;
+    return sqrt(dx*dx + dy*dy + dz*dz);
 }
 ```
 
-2. **自定义CIFilter**：
-
-```objc
-#import <CoreImage/CoreImage.h>
-
-@interface BrightnessAdjustFilter : CIFilter
-
-@property (nonatomic, retain) CIImage *inputImage;
-@property (nonatomic, retain) NSNumber *inputAmount;
-
-@end
-
-@implementation BrightnessAdjustFilter {
-    CIKernel *_brightnessKernel;
-}
-
-- (instancetype)init {
-    self = [super init];
-    if (self) {
-        // 加载 CIKernel 字符串
-        NSString *kernelString = [NSString stringWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"BrightnessKernel" ofType:@"cikernel"] encoding:NSUTF8StringEncoding error:nil];
-        _brightnessKernel = [CIKernel kernelWithString:kernelString];
-    }
-    return self;
-}
-
-- (CIImage *)outputImage {
-    if (!_inputImage) return nil;
-    
-    CGFloat amount = _inputAmount ? _inputAmount.floatValue : 0.0;
-    
-    // 应用 CIKernel
-    return [_brightnessKernel applyWithExtent:_inputImage.extent
-                                      roiCallback:^CGRect(int index, CGRect destRect) {
-                                          return destRect;
-                                      }
-                                     arguments:@[_inputImage, @(amount)]];
-}
-
-@end
-```
-
-3. **使用自定义过滤器**：
-
-```objc
-// 创建并初始化过滤器
-BrightnessAdjustFilter *filter = [[BrightnessAdjustFilter alloc] init];
-filter.inputImage = [[CIImage alloc] initWithImage:[UIImage imageNamed:@"yourImageName"]];
-filter.inputAmount = @(0.1);  // 提升的亮度值，例如0.1
-
-// 获取输出图像
-CIImage *outputImage = filter.outputImage;
-```
-
-这样，你就可以使用你的自定义`BrightnessAdjustFilter`过滤器来调整图像的亮度了。确保你已经正确包含了`BrightnessKernel.cikernel`文件并且它能够在项目中被找到。
-#import <SceneKit/SceneKit.h>
-#import <CoreImage/CoreImage.h>
-
-// ...
-
-SCNNode *yourNode = ...;  // 获取或创建你想要添加辉光效果的节点
-
-CIFilter *bloomFilter = [CIFilter filterWithName:@"CIBloom"];
-[bloomFilter setValue:@(10.0) forKey:@"inputIntensity"];  // 辉光强度
-[bloomFilter setValue:@(2.0) forKey:@"inputRadius"];  // 辉光半径
-
-yourNode.filters = @[bloomFilter];
+这样，每个路标节点都会有其自己的旋转动画实例，互不干扰。再次感谢你指出这个重要的细节。
