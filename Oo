@@ -1,17 +1,26 @@
+当然可以。为了使效果更为灵活，我们可以添加额外的 uniform 变量来控制 bloom 效果的各个方面，如亮度、半径和颜色。
+
+以下是一个修改过的 ShaderToy 代码示例，添加了控制强度、半径和颜色的功能：
+
+```glsl
+uniform float bloomStrength; // 控制 bloom 的强度
+uniform float bloomRadius;   // 控制 bloom 的半径
+uniform vec3 bloomColor;     // 控制 bloom 的颜色
+
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     vec2 uv = fragCoord/iResolution.xy;
-    
+
     // 从你的图片中采样颜色
     vec3 col = texture(iChannel0, uv).rgb;
 
-    // 设置一个亮度阈值来提取亮部
+    // 使用阈值来提取亮部
     float threshold = 0.8;
     vec3 brightParts = max(col - threshold, vec3(0.0));
 
     // 对亮部进行模糊，产生弥散的光效果
     vec3 blur = vec3(0.0);
-    const int range = 15;
+    int range = int(bloomRadius * 50.0); // 调整这个乘数以获得不同的模糊范围
     for(int x = -range; x <= range; x++)
     {
         for(int y = -range; y <= range; y++)
@@ -21,8 +30,19 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     }
     blur /= float((range*2+1) * (range*2+1));
     
-    // 合成原始图像与模糊后的图像
-    vec3 finalColor = col + blur;
+    // 合成原始图像与模糊后的图像，应用强度和颜色
+    vec3 finalColor = col + blur * bloomStrength * bloomColor;
 
     fragColor = vec4(finalColor,1.0);
 }
+```
+
+当你在 ShaderToy 中运行此代码时，你可以为 `bloomStrength`, `bloomRadius`, 和 `bloomColor` 设置不同的值，从而实时地看到它们对效果的影响。
+
+例如：
+
+- `bloomStrength`: 1.5
+- `bloomRadius`: 1.0
+- `bloomColor`: vec3(1.0, 0.8, 0.6)  (为发光部分设置一个暖色调)
+
+你可以根据需要进一步调整这些值以获得你想要的效果。
