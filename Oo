@@ -1,20 +1,14 @@
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     vec2 uv = fragCoord/iResolution.xy;
-    uv = uv * 2.0 - 1.0;
-    uv.y *= iResolution.y / iResolution.x;
     
-    // 生成一个简单的发光圆形
-    float distToCenter = length(uv);
-    vec3 col = vec3(smoothstep(0.3, 0.25, distToCenter));
+    // 从你的图片中采样颜色
+    vec3 col = texture(iChannel0, uv).rgb;
 
-    // 提取圆形的亮部
-    vec3 brightParts;
-    if(distToCenter < 0.1)
-        brightParts = smoothstep(0.05, 0.08, distToCenter);
-    else
-        brightParts = vec3(0.0);
-    
+    // 设置一个亮度阈值来提取亮部
+    float threshold = 0.8;
+    vec3 brightParts = max(col - threshold, vec3(0.0));
+
     // 对亮部进行模糊，产生弥散的光效果
     vec3 blur = vec3(0.0);
     const int range = 15;
@@ -22,7 +16,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     {
         for(int y = -range; y <= range; y++)
         {
-            blur += texture(iChannel0, fragCoord + vec2(x, y) * 1.5).rgb * brightParts;
+            blur += texture(iChannel0, uv + vec2(x, y) / iResolution.xy * 0.02).rgb * brightParts;
         }
     }
     blur /= float((range*2+1) * (range*2+1));
