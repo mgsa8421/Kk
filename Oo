@@ -1,23 +1,26 @@
-// 创建绕Y轴旋转的动画
-CABasicAnimation *rotationAnimation = [CABasicAnimation animationWithKeyPath:@"rotation.y"];
-rotationAnimation.toValue = @(M_PI * 2);  // 360度旋转
-rotationAnimation.duration = 5;  // 你可以调整这个持续时间
-
-// 创建沿Z轴向下移动的动画
-CABasicAnimation *translationAnimation = [CABasicAnimation animationWithKeyPath:@"position.z"];
-translationAnimation.byValue = @10;
-translationAnimation.duration = 5;
-
-// 创建从当前大小缩放到2倍的动画
-CABasicAnimation *scaleAnimation = [CABasicAnimation animationWithKeyPath:@"scale"];
-scaleAnimation.fromValue = [NSValue valueWithSCNVector3:SCNVector3Make(1, 1, 1)];
-scaleAnimation.toValue = [NSValue valueWithSCNVector3:SCNVector3Make(2, 2, 2)];
-scaleAnimation.duration = 5;
-
-// 将所有动画添加到动画组
-CAAnimationGroup *group = [CAAnimationGroup animation];
-group.duration = 5;
-group.animations = @[rotationAnimation, translationAnimation, scaleAnimation];
-
-// 将动画组添加到节点
-[yourNode addAnimation:group forKey:@"combinedAnimation"];
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    vec2 uv = fragCoord/iResolution.xy;
+    
+    // 一个简单的示例，产生一些亮点作为测试
+    vec3 col = 0.5 + 0.5*cos(iTime + uv.xyx + vec3(0,2,4));
+    
+    // 提取亮部
+    vec3 brightParts = smoothstep(0.7, 1.0, col);
+    
+    // 对亮部进行简单的模糊
+    vec3 blur = vec3(0.0);
+    for(int x = -4; x <= 4; x++)
+    {
+        for(int y = -4; y <= 4; y++)
+        {
+            blur += texture(iChannel0, uv + vec2(x, y) * 0.004).rgb;
+        }
+    }
+    blur /= 81.0;
+    
+    // 合成原始图像与模糊后的图像
+    vec3 finalColor = col + blur * brightParts;
+    
+    fragColor = vec4(finalColor,1.0);
+}
