@@ -1,26 +1,34 @@
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     vec2 uv = fragCoord/iResolution.xy;
+    uv = uv * 2.0 - 1.0;
+    uv.y *= iResolution.y / iResolution.x;
     
-    // 一个简单的示例，产生一些亮点作为测试
-    vec3 col = 0.5 + 0.5*cos(iTime + uv.xyx + vec3(0,2,4));
+    // 生成一个简单的发光圆形
+    float distToCenter = length(uv);
+    vec3 col = vec3(smoothstep(0.3, 0.25, distToCenter));
+
+    // 提取圆形的亮部
+    vec3 brightParts;
+    if(distToCenter < 0.1)
+        brightParts = smoothstep(0.05, 0.08, distToCenter);
+    else
+        brightParts = vec3(0.0);
     
-    // 提取亮部
-    vec3 brightParts = smoothstep(0.7, 1.0, col);
-    
-    // 对亮部进行简单的模糊
+    // 对亮部进行模糊，产生弥散的光效果
     vec3 blur = vec3(0.0);
-    for(int x = -4; x <= 4; x++)
+    const int range = 15;
+    for(int x = -range; x <= range; x++)
     {
-        for(int y = -4; y <= 4; y++)
+        for(int y = -range; y <= range; y++)
         {
-            blur += texture(iChannel0, uv + vec2(x, y) * 0.004).rgb;
+            blur += texture(iChannel0, fragCoord + vec2(x, y) * 1.5).rgb * brightParts;
         }
     }
-    blur /= 81.0;
+    blur /= float((range*2+1) * (range*2+1));
     
     // 合成原始图像与模糊后的图像
-    vec3 finalColor = col + blur * brightParts;
-    
+    vec3 finalColor = col + blur;
+
     fragColor = vec4(finalColor,1.0);
 }
