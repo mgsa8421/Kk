@@ -3,17 +3,19 @@ uniform float time;
 uniform float bloomStrength; // 控制 bloom 的强度
 uniform float bloomRadius;   // 控制 bloom 的半径
 uniform vec3 bloomColor;     // 控制 bloom 的颜色
+uniform float bloomDecay;    // 控制 bloom 衰减的速度
 
 vec3 blur(vec2 uv, float radius) {
     vec3 col = vec3(0.0);
     float total = 0.0;
-    
+    vec3 brightParts = max(texture(iChannel0, uv).rgb - 0.8, vec3(0.0));
+
     for (float t = -4.0; t <= 4.0; t++) {
-        float weight = (1.0 - abs(t)) / 4.0;
-        col += texture(iChannel0, uv + vec2(t*radius, 0.0)).rgb * weight;
+        float weight = (1.0 - abs(t) / 4.0) * pow(bloomDecay, abs(t));
+        col += texture(iChannel0, uv + vec2(t * radius, 0.0)).rgb * weight * brightParts;
         total += weight;
     }
-    
+
     col /= total;
     return col;
 }
@@ -24,10 +26,6 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
     // 从你的图片中采样颜色
     vec3 col = texture(iChannel0, uv).rgb;
-
-    // 使用阈值来提取亮部
-    float threshold = 0.8;
-    vec3 brightParts = max(col - threshold, vec3(0.0));
 
     // 双遍高斯模糊处理
     vec3 horizontalBlur = blur(uv, bloomRadius/iResolution.x);
