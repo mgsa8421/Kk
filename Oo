@@ -1,40 +1,23 @@
-确实，动画只设置一次，但你可以在一个定时器或者在每一帧的更新回调中打印 `presentationNode` 的属性来观察动画过程中的值变化。
+// 创建绕Y轴旋转的动画
+CABasicAnimation *rotationAnimation = [CABasicAnimation animationWithKeyPath:@"rotation.y"];
+rotationAnimation.toValue = @(M_PI * 2);  // 360度旋转
+rotationAnimation.duration = 5;  // 你可以调整这个持续时间
 
-以下是两种方法来实现这一点：
+// 创建沿Z轴向下移动的动画
+CABasicAnimation *translationAnimation = [CABasicAnimation animationWithKeyPath:@"position.z"];
+translationAnimation.byValue = @10;
+translationAnimation.duration = 5;
 
-1. **使用定时器**:
-   
-   你可以设置一个定时器，使其在动画的整个持续时间内定期调用一个方法，这个方法会打印 `presentationNode` 的属性。
+// 创建从当前大小缩放到2倍的动画
+CABasicAnimation *scaleAnimation = [CABasicAnimation animationWithKeyPath:@"scale"];
+scaleAnimation.fromValue = [NSValue valueWithSCNVector3:SCNVector3Make(1, 1, 1)];
+scaleAnimation.toValue = [NSValue valueWithSCNVector3:SCNVector3Make(2, 2, 2)];
+scaleAnimation.duration = 5;
 
-   ```objc
-   NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(printOrientation) userInfo:nil repeats:YES];
-   ```
+// 将所有动画添加到动画组
+CAAnimationGroup *group = [CAAnimationGroup animation];
+group.duration = 5;
+group.animations = @[rotationAnimation, translationAnimation, scaleAnimation];
 
-   ```objc
-   - (void)printOrientation {
-       SCNQuaternion animatedOrientation = node.presentationNode.orientation;
-       NSLog(@"x: %f, y: %f, z: %f, w: %f", animatedOrientation.x, animatedOrientation.y, animatedOrientation.z, animatedOrientation.w);
-   }
-   ```
-
-   当动画结束时，记得停止这个定时器。
-
-2. **使用SceneKit的渲染循环**:
-   
-   你可以利用SceneKit的渲染回调来每一帧都打印 `presentationNode` 的属性。
-
-   ```objc
-   SCNView *scnView = (SCNView *)self.view;
-   scnView.delegate = self;
-   ```
-
-   然后在代理方法中：
-
-   ```objc
-   - (void)renderer:(id<SCNRenderer>)renderer updateAtTime:(NSTimeInterval)time {
-       SCNQuaternion animatedOrientation = node.presentationNode.orientation;
-       NSLog(@"x: %f, y: %f, z: %f, w: %f", animatedOrientation.x, animatedOrientation.y, animatedOrientation.z, animatedOrientation.w);
-   }
-   ```
-
-以上两种方法都会帮助你在动画过程中监控节点的朝向变化。选择哪种方法取决于你的需要和具体情境。
+// 将动画组添加到节点
+[yourNode addAnimation:group forKey:@"combinedAnimation"];
