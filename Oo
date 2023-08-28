@@ -1,71 +1,40 @@
-在SceneKit中，动画默认是在节点的局部坐标系上应用的，除非另有指定。这意味着当你为节点设置旋转动画时，它会根据该节点当前的旋转状态（或其他变换状态）进行相对旋转。
+确实，动画只设置一次，但你可以在一个定时器或者在每一帧的更新回调中打印 `presentationNode` 的属性来观察动画过程中的值变化。
 
-你提到的 `lookAt:` 方法确实会改变节点的旋转，使其面向某个位置。如果你在调用 `lookAt:` 后再应用旋转动画，那么动画将在 `lookAt:` 设置的旋转基础上进行。
+以下是两种方法来实现这一点：
 
-给定你的需求，你想让路标节点绕其自己的Z轴旋转一周。这里的代码确实可以达到这样的效果。但为了更加明确，我们可以稍作调整：
+1. **使用定时器**:
+   
+   你可以设置一个定时器，使其在动画的整个持续时间内定期调用一个方法，这个方法会打印 `presentationNode` 的属性。
 
-1. 旋转起点：由于你已经使用 `lookAt:` 设置了路标的朝向，所以这就是动画的起始点。
+   ```objc
+   NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(printOrientation) userInfo:nil repeats:YES];
+   ```
 
-2. 旋转终点：你想让它绕Z轴旋转一周，所以我们只需要设置旋转动画的 `toValue` 为绕Z轴的360度。
+   ```objc
+   - (void)printOrientation {
+       SCNQuaternion animatedOrientation = node.presentationNode.orientation;
+       NSLog(@"x: %f, y: %f, z: %f, w: %f", animatedOrientation.x, animatedOrientation.y, animatedOrientation.z, animatedOrientation.w);
+   }
+   ```
 
-更新后的动画创建部分如下：
+   当动画结束时，记得停止这个定时器。
 
-```objc
-- (CABasicAnimation *)createRotationAnimation {
-    CABasicAnimation *rotationAnimation = [CABasicAnimation animationWithKeyPath:@"rotation.z"];
-    rotationAnimation.toValue = @(M_PI * 2);
-    rotationAnimation.duration = 5; // 假设动画时长为5秒
-    rotationAnimation.cumulative = YES;
-    rotationAnimation.additive = YES;
-    return rotationAnimation;
-}
-```
+2. **使用SceneKit的渲染循环**:
+   
+   你可以利用SceneKit的渲染回调来每一帧都打印 `presentationNode` 的属性。
 
-这里，我们用 `rotation.z` 作为 `keyPath` 专门对Z轴进行旋转。同时，我们设置了 `cumulative` 和 `additive` 属性为 `YES`，这意味着动画的效果是在当前节点的旋转基础上进行的，而不是从零开始的。
+   ```objc
+   SCNView *scnView = (SCNView *)self.view;
+   scnView.delegate = self;
+   ```
 
-现在，这样的代码应该可以实现你的需求：使路标绕其自己的Z轴旋转一周，并在旋转结束后指向原来通过 `lookAt:` 设置的位置。
+   然后在代理方法中：
 
-对，你是正确的。在这个场景下，每个节点都应该有其自己的动画实例。否则，当你试图为一个节点设置动画的属性（例如 `timeOffset`），它可能会影响到其他使用了同一个动画实例的节点。
+   ```objc
+   - (void)renderer:(id<SCNRenderer>)renderer updateAtTime:(NSTimeInterval)time {
+       SCNQuaternion animatedOrientation = node.presentationNode.orientation;
+       NSLog(@"x: %f, y: %f, z: %f, w: %f", animatedOrientation.x, animatedOrientation.y, animatedOrientation.z, animatedOrientation.w);
+   }
+   ```
 
-基于你的提醒，以下是更新后的伪代码：
-
-```objc
-NSMutableArray *landmarkNodes; // 你的路标模型节点数组
-SCNNode *cameraNode; // 相机节点
-const float triggerDistance = 10.0; // 当相机在10单位距离内，触发动画
-
-// 渲染循环
-- (void)renderLoopWithVideoTimestamp:(NSTimeInterval)timestamp {
-    for (SCNNode *landmarkNode in landmarkNodes) {
-        // 如果路标上已经有动画，跳过
-        if ([landmarkNode animationForKey:@"rotationAnimation"]) continue;
-        
-        float distance = [self distanceBetween:cameraNode.position and:landmarkNode.position];
-        if (distance <= triggerDistance) {
-            // 为每个路标创建一个新的动画实例
-            CABasicAnimation *rotationAnimation = [self createRotationAnimation];
-            // 设置动画开始时间为当前时间戳
-            rotationAnimation.beginTime = timestamp;
-            // 添加动画到路标
-            [landmarkNode addAnimation:rotationAnimation forKey:@"rotationAnimation"];
-        }
-    }
-}
-
-- (CABasicAnimation *)createRotationAnimation {
-    CABasicAnimation *rotationAnimation = [CABasicAnimation animationWithKeyPath:@"rotation"];
-    rotationAnimation.toValue = [NSValue valueWithSCNVector4:SCNVector4Make(0, 1, 0, M_PI * 2)];
-    rotationAnimation.duration = 5; // 假设动画时长为5秒
-    return rotationAnimation;
-}
-
-// 计算两点间的距离
-- (float)distanceBetween:(SCNVector3)pointA and:(SCNVector3)pointB {
-    float dx = pointA.x - pointB.x;
-    float dy = pointA.y - pointB.y;
-    float dz = pointA.z - pointB.z;
-    return sqrt(dx*dx + dy*dy + dz*dz);
-}
-```
-
-这样，每个路标节点都会有其自己的旋转动画实例，互不干扰。再次感谢你指出这个重要的细节。
+以上两种方法都会帮助你在动画过程中监控节点的朝向变化。选择哪种方法取决于你的需要和具体情境。
