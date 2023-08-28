@@ -1,4 +1,27 @@
-kernel vec4 brightenEffect(sampler image, float amount) {
-    vec4 pixel = sample(image, samplerCoord(image));
-    return pixel + vec4(amount, amount, amount, 0.0);
+kernel vec4 gaussianBlur(sampler image) {
+    const int size = 5;  // Kernel size
+    const float sigma = 2.0;  // Blur intensity
+    const vec2 dir = vec2(1.0, 0.0);  // Horizontal blur direction
+    
+    float kernel[size];
+    float norm = 0.0;   // For normalization
+
+    // Calculate the Gaussian kernel
+    for (int i = 0; i < size; i++) {
+        float x = float(i - size/2);
+        kernel[i] = exp(-x*x / (2.0 * sigma * sigma));
+        norm += kernel[i];
+    }
+
+    // Normalize the kernel
+    for (int i = 0; i < size; i++) {
+        kernel[i] /= norm;
+    }
+
+    vec4 sum = vec4(0.0);
+    for (int i = 0; i < size; i++) {
+        sum += sample(image, samplerCoord(image) + dir * float(i - size/2)) * kernel[i];
+    }
+
+    return sum;
 }
