@@ -4,8 +4,8 @@ using namespace metal;\n\
 \n\
 #include <CoreImage/CoreImage.h>\n\
 \n\
-kernel void simpleAdjustment(texture2d<half> input [[texture(0)]], sampler samplerInput [[sampler(0)]], float adjustment, uint2 gid [[thread_position_in_grid]], texture2d<half> output [[texture(1)]]) {\n\
+kernel half4 simpleAdjustment(texture2d<half> input [[texture(0)]], sampler samplerInput [[sampler(0)]], float adjustment, uint2 gid [[thread_position_in_grid]]) {\n\
     half4 pixelColor = input.read(gid);\n\
     pixelColor.rgb = pixelColor.rgb + adjustment;\n\
-    output.write(pixelColor, gid);\n\
+    return pixelColor;\n\
 }";
