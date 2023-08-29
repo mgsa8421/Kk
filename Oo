@@ -1,27 +1,40 @@
-kernel vec4 gaussianBlur(sampler image) {
-    const int size = 5;  // Kernel size
-    const float sigma = 2.0;  // Blur intensity
-    const vec2 dir = vec2(1.0, 0.0);  // Horizontal blur direction
-    
-    float kernel[size];
-    float norm = 0.0;   // For normalization
+当你使用 `+kernelWithMetalString:error:` 方法创建一个 `CIKernel` 实例时，你可以直接提供 Metal Shading Language（MSL）字符串而不是从预编译的 `.metallib` 文件中加载它。这种方式在开发时很有用，因为它允许你直接编写和测试 MSL 代码，而不必经常重新编译你的 Metal library。
 
-    // Calculate the Gaussian kernel
-    for (int i = 0; i < size; i++) {
-        float x = float(i - size/2);
-        kernel[i] = exp(-x*x / (2.0 * sigma * sigma));
-        norm += kernel[i];
-    }
+这是如何使用这个方法的简单步骤：
 
-    // Normalize the kernel
-    for (int i = 0; i < size; i++) {
-        kernel[i] /= norm;
-    }
+1. 在代码中写下你的 MSL kernel。
 
-    vec4 sum = vec4(0.0);
-    for (int i = 0; i < size; i++) {
-        sum += sample(image, samplerCoord(image) + dir * float(i - size/2)) * kernel[i];
-    }
+例如：
 
-    return sum;
+```objc
+NSString *metalKernelString = @"\
+#include <metal_stdlib>\n\
+using namespace metal;\n\
+\n\
+#include <CoreImage/CoreImage.h>\n\
+\n\
+kernel void simpleAdjustment(sample_t input [[texture(0)]], sampler samplerInput [[sampler(0)]], float adjustment, output_pixel_t output [[color(0)]]) {\n\
+    float4 pixelColor = sample(input, samplerInput, input.texCoord);\n\
+    pixelColor.rgb = pixelColor.rgb + adjustment;\n\
+    output = pixelColor;\n\
+}";
+```
+
+2. 使用该字符串创建 `CIKernel`：
+
+```objc
+NSError *error = nil;
+CIKernel *metalKernel = [CIKernel kernelWithMetalString:metalKernelString error:&error];
+if (error) {
+    NSLog(@"Error creating kernel: %@", error);
 }
+```
+
+3. 使用创建的 `metalKernel` 对 `CIImage` 进行处理。
+
+请注意：
+
+- 当你使用此方法时，每次调用都会重新编译 MSL，这在开发时很有用，但在生产环境中可能不是最高效的方式。
+- 确保你的 MSL 代码没有错误。任何编译错误都会在 `kernelWithMetalString:error:` 返回，并通过 NSError 参数提供给你。确保检查并处理这些错误。
+
+使用 `kernelWithMetalString:error:` 方法为 CIKernel 提供 MSL 代码是一个非常灵活和强大的工具，特别是在开发和测试新的 image processing operations 时。
