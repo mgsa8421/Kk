@@ -1,11 +1,47 @@
-NSString *metalKernelString = @"\
-#include <metal_stdlib>\n\
-using namespace metal;\n\
-\n\
-#include <CoreImage/CoreImage.h>\n\
-\n\
-kernel half4 simpleAdjustment(texture2d<half> input [[texture(0)]], sampler samplerInput [[sampler(0)]], float adjustment, uint2 gid [[thread_position_in_grid]]) {\n\
-    half4 pixelColor = input.read(gid);\n\
-    pixelColor.rgb = pixelColor.rgb + adjustment;\n\
-    return pixelColor;\n\
-}";
+在Metal中，您可以根据需要创建自定义的`.metallib`库文件。以下是如何创建和使用自定义库文件的步骤：
+
+### 1. 手工编译 `.metal` 文件为 `.air` 文件：
+
+使用Metal编译器（`metal`）将您的`.metal`文件编译为一个中间表示形式（`.air`文件）：
+
+```
+xcrun metal -c MyShader.metal -o MyShader.air
+```
+
+### 2. 从 `.air` 文件创建 `.metallib` 文件：
+
+接下来，您可以使用Metal的链接工具（`metallib`）从`.air`文件创建一个`.metallib`库文件：
+
+```
+xcrun metallib MyShader.air -o MyCustomLibrary.metallib
+```
+
+### 3. 将 `.metallib` 文件添加到Xcode项目：
+
+在Xcode中，将`MyCustomLibrary.metallib`文件拖放到您的项目中，确保它被包含在应用的target中，并在构建过程中被复制到应用的bundle中。
+
+### 4. 在代码中加载自定义的库文件：
+
+当您需要在应用中使用自定义库中的着色器时，您可以像下面这样加载它：
+
+Objective-C:
+
+```objc
+NSString *path = [[NSBundle mainBundle] pathForResource:@"MyCustomLibrary" ofType:@"metallib"];
+id<MTLLibrary> customLibrary = [device newLibraryWithFile:path error:&error];
+
+id<MTLFunction> vertexFunction = [customLibrary newFunctionWithName:@"vertex_shader_function_name"];
+id<MTLFunction> fragmentFunction = [customLibrary newFunctionWithName:@"fragment_shader_function_name"];
+```
+
+Swift:
+
+```swift
+if let path = Bundle.main.path(forResource: "MyCustomLibrary", ofType: "metallib") {
+    let customLibrary = try device.makeLibrary(filepath: path)
+    let vertexFunction = customLibrary.makeFunction(name: "vertex_shader_function_name")
+    let fragmentFunction = customLibrary.makeFunction(name: "fragment_shader_function_name")
+}
+```
+
+这样，您就可以自定义您的Metal库文件，有选择地决定哪些着色器要包含在哪个库中，以及如何在代码中使用它们。
