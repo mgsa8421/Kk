@@ -1,47 +1,84 @@
-在Metal中，您可以根据需要创建自定义的`.metallib`库文件。以下是如何创建和使用自定义库文件的步骤：
+在SceneKit中，您可以使用`SCNGeometry`来根据一组离散的点绘制一条连续的实线。具体来说，您可以使用`SCNGeometrySource`和`SCNGeometryElement`来创建自定义的几何形状。
 
-### 1. 手工编译 `.metal` 文件为 `.air` 文件：
-
-使用Metal编译器（`metal`）将您的`.metal`文件编译为一个中间表示形式（`.air`文件）：
-
-```
-xcrun metal -c MyShader.metal -o MyShader.air
-```
-
-### 2. 从 `.air` 文件创建 `.metallib` 文件：
-
-接下来，您可以使用Metal的链接工具（`metallib`）从`.air`文件创建一个`.metallib`库文件：
-
-```
-xcrun metallib MyShader.air -o MyCustomLibrary.metallib
-```
-
-### 3. 将 `.metallib` 文件添加到Xcode项目：
-
-在Xcode中，将`MyCustomLibrary.metallib`文件拖放到您的项目中，确保它被包含在应用的target中，并在构建过程中被复制到应用的bundle中。
-
-### 4. 在代码中加载自定义的库文件：
-
-当您需要在应用中使用自定义库中的着色器时，您可以像下面这样加载它：
-
-Objective-C:
+以下是一个简单的Objective-C代码示例，演示如何根据一组离散的点（存储在`NSArray`中）绘制一条连续的实线：
 
 ```objc
-NSString *path = [[NSBundle mainBundle] pathForResource:@"MyCustomLibrary" ofType:@"metallib"];
-id<MTLLibrary> customLibrary = [device newLibraryWithFile:path error:&error];
+#import <SceneKit/SceneKit.h>
 
-id<MTLFunction> vertexFunction = [customLibrary newFunctionWithName:@"vertex_shader_function_name"];
-id<MTLFunction> fragmentFunction = [customLibrary newFunctionWithName:@"fragment_shader_function_name"];
-```
+// 假设您已经有了一个表示空间中一条曲线的离散点集合
+NSArray<NSValue *> *points = @[
+    [NSValue valueWithSCNVector3:SCNVector3Make(0, 0, 0)],
+    [NSValue valueWithSCNVector3:SCNVector3Make(1, 1, 0)],
+    [NSValue valueWithSCNVector3:SCNVector3Make(2, 0, 0)],
+    // ... 更多点
+];
 
-Swift:
+// 创建一个用于存储点坐标的数组
+NSInteger vertexCount = points.count;
+float *vertices = malloc(sizeof(float) * 3 * vertexCount);
 
-```swift
-if let path = Bundle.main.path(forResource: "MyCustomLibrary", ofType: "metallib") {
-    let customLibrary = try device.makeLibrary(filepath: path)
-    let vertexFunction = customLibrary.makeFunction(name: "vertex_shader_function_name")
-    let fragmentFunction = customLibrary.makeFunction(name: "fragment_shader_function_name")
+// 填充点坐标数组
+for (NSInteger i = 0; i < vertexCount; ++i) {
+    SCNVector3 point = [points[i] SCNVector3Value];
+    vertices[i * 3] = point.x;
+    vertices[i * 3 + 1] = point.y;
+    vertices[i * 3 + 2] = point.z;
 }
+
+// 创建SCNGeometrySource
+SCNGeometrySource *vertexSource = [SCNGeometrySource geometrySourceWithData:[NSData dataWithBytes:vertices length:sizeof(float) * 3 * vertexCount]
+                                                                     semantic:SCNGeometrySourceSemanticVertex
+                                                                  vectorCount:vertexCount
+                                                              floatComponents:YES
+                                                          componentsPerVector:3
+                                                            bytesPerComponent:sizeof(float)
+                                                                   dataOffset:0
+                                                                   dataStride:sizeof(float) * 3];
+
+// 创建SCNGeometryElement
+NSInteger *indices = malloc(sizeof(NSInteger) * (vertexCount - 1) * 2);
+for (NSInteger i = 0; i < vertexCount - 1; ++i) {
+    indices[i * 2] = i;
+    indices[i * 2 + 1] = i + 1;
+}
+SCNGeometryElement *element = [SCNGeometryElement geometryElementWithData:[NSData dataWithBytes:indices length:sizeof(NSInteger) * (vertexCount - 1) * 2]
+                                                           primitiveType:SCNGeometryPrimitiveTypeLine
+                                                          primitiveCount:vertexCount - 1
+                                                           bytesPerIndex:sizeof(NSInteger)];
+
+// 创建SCNGeometry
+SCNGeometry *line = [SCNGeometry geometryWithSources:@[vertexSource] elements:@[element]];
+
+// 添加到场景中
+SCNNode *lineNode = [SCNNode nodeWithGeometry:line];
+[self.sceneView.scene.rootNode addChildNode:lineNode];
+
+// 释放内存
+free(vertices);
+free(indices);
 ```
 
-这样，您就可以自定义您的Metal库文件，有选择地决定哪些着色器要包含在哪个库中，以及如何在代码中使用它们。
+这里，我们首先创建一个`SCNGeometrySource`来表示点的坐标，然后创建一个`SCNGeometryElement`来表示如何将这些点连接起来。最后，我们使用这两者来创建一个`SCNGeometry`对象，该对象可以添加到场景中。
+
+注意：这个示例假设您已经有了一个`SCNView`对象（`self.sceneView`）和一个场景（`self.sceneView.scene`）。请根据您的实际需求进行相应的调整。希望这能帮助您实现所需的效果！
+
+---
+连接短圆柱
+for (NSInteger i = 0; i < vertexCount - 1; ++i) {
+    SCNVector3 start = [points[i] SCNVector3Value];
+    SCNVector3 end = [points[i + 1] SCNVector3Value];
+    SCNVector3 midPoint = SCNVector3Make((start.x + end.x) / 2, (start.y + end.y) / 2, (start.z + end.z) / 2);
+
+    float length = sqrtf(powf(end.x - start.x, 2) + powf(end.y - start.y, 2) + powf(end.z - start.z, 2));
+
+    SCNCylinder *cylinder = [SCNCylinder cylinderWithRadius:0.1 height:length]; // 设置半径来控制粗细
+    SCNNode *cylinderNode = [SCNNode nodeWithGeometry:cylinder];
+    cylinderNode.position = midPoint;
+    cylinderNode.eulerAngles = // 设置以使其与两点之间的线段对齐
+
+    [self.sceneView.scene.rootNode addChildNode:cylinderNode];
+}
+
+
+---
+
