@@ -81,4 +81,29 @@ for (NSInteger i = 0; i < vertexCount - 1; ++i) {
 
 
 ---
+烟雾粒子
+// 创建和配置粒子系统
+SCNParticleSystem *particleSystem = [SCNParticleSystem particleSystemNamed:@"smoke" inDirectory:nil];
+particleSystem.particleImage = [UIImage imageNamed:@"smokeImage.png"];
+particleSystem.birthRate = 500;
+particleSystem.particleLifeSpan = 5.0;
+particleSystem.particleVelocity = 0;
+particleSystem.emissionDuration = 1.0;
+
+// 创建一个节点并将粒子系统附加到该节点
+SCNNode *particleNode = [SCNNode node];
+[particleNode addParticleSystem:particleSystem];
+
+// 将particleNode添加到场景或其它适当的父节点
+[scene.rootNode addChildNode:particleNode];
+
+// 在更新块中设置particleNode的位置
+void (^updateBlock)(void) = ^{
+    if (currentIndex < [pathPoints count]) {
+        SCNVector3 point = [pathPoints[currentIndex] SCNVector3Value];
+        planeNode.position = point;
+        particleNode.position = point;  // 将烟雾的位置设置为飞机当前位置
+        currentIndex++;
+    }
+};
 
