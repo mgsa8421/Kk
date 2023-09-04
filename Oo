@@ -90,7 +90,7 @@ particleSystem.particleLifeSpan = 5.0;
 particleSystem.particleVelocity = 0;
 particleSystem.emissionDuration = 1.0;
 
-// 创建一个节点并将粒子系统附加到该节点
+// 创建一个节点并将粒子6系统附加到该节点
 SCNNode *particleNode = [SCNNode node];
 [particleNode addParticleSystem:particleSystem];
 
@@ -107,3 +107,36 @@ void (^updateBlock)(void) = ^{
     }
 };
 
+---
+在 ShaderToy 上实现逐渐模糊再复原的效果可以使用不同的方法，其中一种相对高效的方式是使用多重采样技术。下面是一个基础的 ShaderToy 版本的代码：
+
+```GLSL
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    vec2 uv = fragCoord/iResolution.xy;
+    vec3 col = vec3(0.0);
+
+    // 获取时间参数，让模糊效果随时间周期性变化
+    // 通过使用 abs(sin(iTime))，我们得到一个在0到1之间周期性变化的值
+    float timeFactor = abs(sin(iTime));
+    
+    // 设置模糊半径
+    float radius = 0.01 * timeFactor; // 你可以按照需要调整这个值
+
+    // 多重采样
+    for(float x = -4.0; x <= 4.0; x += 1.0) {
+        for(float y = -4.0; y <= 4.0; y += 1.0) {
+            vec2 offset = vec2(x, y) * radius;
+            col += texture(iChannel0, uv + offset).rgb;
+        }
+    }
+    
+    // 平均色彩值
+    col /= 81.0;
+
+    fragColor = vec4(col, 1.0);
+}
+```
+
+在这个例子里，我们采用了一个 9x9 的采样网格，其中 `radius` 定义了模糊的半径，你可以根据需要调整这个值。这样做效率相对较高，但请注意，这还是一个基础的实现，更高级的实现会使用更复杂的算法和优化。
+
+该代码在每个帧中都会做81次纹理采样（9x9），这在大多数现代硬件上应该是可接受的，但如果你需要更高的性能，可以尝试使用更小的采样网格或使用其他模糊算法。
