@@ -157,9 +157,34 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     fragColor = mix(color1, color2, chooseTexture);
 }
 
+
+
     }
     
-    // 平均色彩值
+    // 平均色彩
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    vec2 uv = fragCoord / iResolution.xy;
+    
+    // 定义棋盘格的大小
+    vec2 gridSize = vec2(8.0, 16.0);
+    
+    // 计算每个格子的UV大小
+    vec2 cellSize = 1.0 / gridSize;
+    
+    // 根据UV坐标确定当前片元所在的格子位置
+    vec2 cellIndex = floor(uv * gridSize);
+    
+    // 使用时间、位置和速度来生成一个闪动的随机值
+    float speedFactor = 10.0; // 控制闪动的速度
+    float randValue = fract(sin(dot(cellIndex, vec2(12.9898, 78.233)) + iTime * speedFactor) * 43758.5453);
+    
+    // 使用您希望的占比变量决定使用黑色还是白色
+    float blackThreshold = 0.5; // 这是一个控制黑色格子占比的值，例如0.7代表70%的格子是黑色
+    float chooseColor = step(blackThreshold, randValue);
+    
+    fragColor = vec4(vec3(chooseColor), 1.0);
+}
+
     col /= 81.0;
 
     fragColor = vec4(col, 1.0);
