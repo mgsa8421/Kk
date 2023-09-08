@@ -128,6 +128,35 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             vec2 offset = vec2(x, y) * radius;
             col += texture(iChannel0, uv + offset).rgb;
         }
+
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    vec2 uv = fragCoord / iResolution.xy;
+    
+    // 定义棋盘格的大小，此处使用8x16的格子
+    vec2 gridSize = vec2(8.0, 16.0);
+    
+    // 计算每个格子的UV大小
+    vec2 cellSize = 1.0 / gridSize;
+    
+    // 根据UV坐标确定当前片元所在的格子位置
+    vec2 cellIndex = floor(uv * gridSize);
+    
+    // 使用时间、位置和速度来生成一个随机值
+    float randValue = fract(sin(dot(cellIndex, vec2(12.9898, 78.233)) + iTime) * 43758.5453);
+    
+    // 从两个纹理中选择一个
+    // iChannel0和iChannel1是ShaderToy中默认的输入纹理
+    vec2 randomUV = fract(vec2(randValue, randValue * 0.9876));
+    vec4 color1 = texture(iChannel0, randomUV);
+    vec4 color2 = texture(iChannel1, randomUV);
+    
+    // 使用u_textureRatio决定从哪个纹理中取色
+    // 假设你已经为u_textureRatio设置了一个从0.0到1.0的滑动条
+    float chooseTexture = step(0.5, randValue); // 这里的0.5可以替换为u_textureRatio
+    fragColor = mix(color1, color2, chooseTexture);
+}
+
     }
     
     // 平均色彩值
