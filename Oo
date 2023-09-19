@@ -194,3 +194,87 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 在这个例子里，我们采用了一个 9x9 的采样网格，其中 `radius` 定义了模糊的半径，你可以根据需要调整这个值。这样做效率相对较高，但请注意，这还是一个基础的实现，更高级的实现会使用更复杂的算法和优化。
 
 该代码在每个帧中都会做81次纹理采样（9x9），这在大多数现代硬件上应该是可接受的，但如果你需要更高的性能，可以尝试使用更小的采样网格或使用其他模糊算法。
+
+–––
+为了实现您的需求，您需要创建两个渲染步骤：第一个步骤是渲染到一个`colorNode`的输出，第二个步骤是将这个输出与背景图进行混合。
+
+以下是您可能的`SCNTechnique` plist 的大致结构：
+
+1. **首先，定义两个目标**：`colorNodeOutput` 和 `finalOutput`。
+2. **然后，定义两个passes**：`renderColorNode` 和 `blendWithBackground`。
+3. **最后，在`blendWithBackground` pass 中，使用 `blendMode` 为 `alpha` 来混合背景和 `colorNode` 的输出**。
+
+```xml
+<dict>
+    <key>sequence</key>
+    <array>
+        <string>renderColorNode</string>
+        <string>blendWithBackground</string>
+    </array>
+
+    <key>passes</key>
+    <dict>
+        <key>renderColorNode</key>
+        <dict>
+            <key>draw</key>
+            <string>DRAW_SCENE</string>
+            <key>outputs</key>
+            <dict>
+                <key>color</key>
+                <string>colorNodeOutput</string>
+            </dict>
+            <!-- 其他属性，如stencilStates、inputs等 -->
+        </dict>
+
+        <key>blendWithBackground</key>
+        <dict>
+            <key>draw</key>
+            <string>DRAW_QUAD</string>
+            <key>inputs</key>
+            <dict>
+                <key>backgroundTexture</key>
+                <string>background</string>
+                <key>colorNodeTexture</key>
+                <string>colorNodeOutput</string>
+            </dict>
+            <key>colorStates</key>
+            <dict>
+                <key>blendMode</key>
+                <string>alpha</string>
+            </dict>
+            <key>outputs</key>
+            <dict>
+                <key>color</key>
+                <string>finalOutput</string>
+            </dict>
+        </dict>
+    </dict>
+
+    <key>targets</key>
+    <dict>
+        <key>colorNodeOutput</key>
+        <dict>
+            <key>type</key>
+            <string>color</string>
+        </dict>
+        <key>finalOutput</key>
+        <dict>
+            <key>type</key>
+            <string>color</string>
+        </dict>
+    </dict>
+
+    <key>symbols</key>
+    <dict>
+        <key>background</key>
+        <dict>
+            <key>type</key>
+            <string>sampler2D</string>
+            <key>image</key>
+            <string>yourBackgroundImageFilename.jpg</string>
+        </dict>
+    </dict>
+</dict>
+```
+
+请注意，上面的代码仅为示例，实际实现可能需要根据您的具体需求进行调整。确保您已经配置了所有需要的输入、输出、状态和属性。
