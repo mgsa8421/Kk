@@ -278,3 +278,64 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 ```
 
 请注意，上面的代码仅为示例，实际实现可能需要根据您的具体需求进行调整。确保您已经配置了所有需要的输入、输出、状态和属性。
+
+<dictionary>
+    <key>passes</key>
+    <dictionary>
+        <!-- 第一个pass: 渲染第一组节点 -->
+        <key>pass1</key>
+        <dictionary>
+            <key>draw</key>
+            <string>DRAW_SCENE</string>
+            <key>colorStates</key>
+            <dictionary>
+                <key>clear</key>
+                <true/>
+            </dictionary>
+            <key>colorAttachments</key>
+            <dictionary>
+                <key>color</key>
+                <dictionary>
+                    <key>texture</key>
+                    <string>COLOR</string>
+                    <key>clear</key>
+                    <true/>
+                </dictionary>
+            </dictionary>
+            <key>node</key>
+            <string>YOUR_FIRST_GROUP_NODE_NAME</string>
+        </dictionary>
+
+        <!-- 第二个pass: 渲染第二组节点 -->
+        <key>pass2</key>
+        <dictionary>
+            <key>draw</key>
+            <string>DRAW_SCENE</string>
+            <key>colorAttachments</key>
+            <dictionary>
+                <key>color</key>
+                <dictionary>
+                    <key>texture</key>
+                    <string>COLOR</string>
+                </dictionary>
+            </dictionary>
+            <key>node</key>
+            <string>YOUR_SECOND_GROUP_NODE_NAME</string>
+        </dictionary>
+    </dictionary>
+
+    <key>sequence</key>
+    <array>
+        <string>pass1</string>
+        <string>pass2</string>
+    </array>
+
+    <key>colorAttachments</key>
+    <dictionary>
+        <key>COLOR</key>
+        <dictionary>
+            <key>type</key>
+            <string>color</string>
+        </dictionary>
+    </dictionary>
+</dictionary>
