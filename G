@@ -1,0 +1,10 @@
+1.主要对象的关系
+MTLCommandQueue（由device创建 对device来说唯一）可以创建若干个MTLCommandBuffer，其中每个MTLCommandBuffer包含了由MTLCommandEncoder编码出的GPU操作指令（渲染或并行计算指令）
+用户commit一个MTLCommandBuffer时，该MTLCommandBuffer所在的MTLCommandQueue会向GPU发送渲染指令
+2.提交多个MTLCommandBuffer。
+单线程，gpu通常根据commit的时间先后顺序执行，但cpu和gpu仍是异步的，可以调用[commandBuffer waitUntilCompleted]让cpu等待gpu完成计算
+多线程，metal会自动安排，也提供了同步机制让用户手动控制执行顺序
+同步机制MTLFence和MTLEvent
+
+
+
