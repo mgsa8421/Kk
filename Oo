@@ -391,3 +391,27 @@ rotationAnimation.toValue = [NSValue valueWithSCNVector4:SCNVector4Make(0, 1, 0,
 确保您已经创建了一个场景并引用了上述代码中的`scene`。当您想开始移动和缩放动画时，只需调用`startParentNodeAnimation`方法即可。
 
 这就是基本的实现。您可以根据自己的需求进行调整，比如动画的持续时间、移动距离等。
+
+–––––––––––––––––
+
+// 设置相机的物理身体
+SCNPhysicsBody *cameraBody = [SCNPhysicsBody dynamicBody];
+cameraBody.categoryBitMask = 1 << 0; // 使用第一个位作为相机的类别
+cameraBody.contactTestBitMask = 1 << 1; // 检测与第二个位（即物体类别）的碰撞
+cameraNode.physicsBody = cameraBody;
+
+// 设置其他物体的物理身体
+SCNPhysicsBody *objectBody = [SCNPhysicsBody staticBody];
+objectBody.categoryBitMask = 1 << 1; // 使用第二个位作为物体的类别
+objectNode.physicsBody = objectBody;
+
+// 设置物理世界的代理以检测碰撞
+scene.physicsWorld.contactDelegate = self;
+
+// 实现SCNPhysicsContactDelegate的方法
+- (void)physicsWorld:(SCNPhysicsWorld *)world didBeginContact:(SCNPhysicsContact *)contact {
+    if ((contact.nodeA == cameraNode && contact.nodeB == objectNode) ||
+        (contact.nodeA == objectNode && contact.nodeB == cameraNode)) {
+        // 执行您想要的动画或其他操作
+    }
+}
