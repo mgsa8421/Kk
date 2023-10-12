@@ -329,7 +329,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         <string>pass1</string>
         <string>pass2</string>
     </array>
-
     <key>colorAttachments</key>
     <dictionary>
         <key>COLOR</key>
@@ -339,3 +338,56 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         </dictionary>
     </dictionary>
 </dictionary>
+
+----------------
+
+理解您的需求后，我可以为您提供一个基于SceneKit的实现示例。下面是一个简单的概述及其对应的Objective-C代码：
+
+1. **创建两个节点，B（父节点）和A（子节点）**。首先，我们创建两个`SCNNode`对象，然后将节点A作为节点B的子节点。
+
+```objc
+SCNNode *nodeA = [SCNNode node];
+SCNNode *nodeB = [SCNNode node];
+[nodeB addChildNode:nodeA];
+```
+
+2. **为A节点添加不间断旋转动画**：
+   
+```objc
+CABasicAnimation *rotationAnimation = [CABasicAnimation animationWithKeyPath:@"rotation"];
+rotationAnimation.duration = 10.0; // 例如，10秒完成一圈
+rotationAnimation.repeatCount = INFINITY; // 无限次重复
+rotationAnimation.fromValue = [NSValue valueWithSCNVector4:SCNVector4Make(0, 1, 0, 0)];
+rotationAnimation.toValue = [NSValue valueWithSCNVector4:SCNVector4Make(0, 1, 0, 2*M_PI)];
+[nodeA addAnimation:rotationAnimation forKey:nil];
+```
+
+3. **创建一个方法来触发B节点的动画**。当某个事件发生时，您可以调用这个方法来开始移动和缩放动画。
+
+```objc
+- (void)startParentNodeAnimation {
+    CABasicAnimation *moveAnimation = [CABasicAnimation animationWithKeyPath:@"position.y"];
+    moveAnimation.toValue = @(nodeB.position.y - 10.0); //例如，向下移动10个单位
+    moveAnimation.duration = 5.0;
+
+    CABasicAnimation *scaleAnimation = [CABasicAnimation animationWithKeyPath:@"scale"];
+    scaleAnimation.toValue = [NSValue valueWithSCNVector3:SCNVector3Make(0.5, 0.5, 0.5)]; //例如，缩小到0.5的大小
+    scaleAnimation.duration = 5.0;
+
+    CAAnimationGroup *group = [CAAnimationGroup animation];
+    group.animations = @[moveAnimation, scaleAnimation];
+    group.duration = 5.0;
+
+    [nodeB addAnimation:group forKey:nil];
+}
+```
+
+4. **将B节点添加到场景的根节点**：
+   
+```objc
+[scene.rootNode addChildNode:nodeB];
+```
+
+确保您已经创建了一个场景并引用了上述代码中的`scene`。当您想开始移动和缩放动画时，只需调用`startParentNodeAnimation`方法即可。
+
+这就是基本的实现。您可以根据自己的需求进行调整，比如动画的持续时间、移动距离等。
