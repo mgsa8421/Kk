@@ -415,3 +415,67 @@ scene.physicsWorld.contactDelegate = self;
         // 执行您想要的动画或其他操作
     }
 }
+
+————————————————————————
+
+// 定义一个四边形的顶点数据，四个顶点
+#define VERTEX_COUNT 4
+
+typedef struct {
+    float x, y, z;    // position
+    float nx, ny, nz; // normal
+    float s, t;       // texture coordinates
+} MyVertex;
+
+// 填充四边形的顶点数据
+MyVertex vertices[VERTEX_COUNT] = {
+    {-0.5, -0.5, 0,   0, 0, 1,  0, 1},  // 左下
+    {-0.5, 0.5, 0,    0, 0, 1,  0, 0},  // 左上
+    {0.5, 0.5, 0,     0, 0, 1,  1, 0},  // 右上
+    {0.5, -0.5, 0,    0, 0, 1,  1, 1}   // 右下
+};
+
+// 创建几何体的源数据
+NSData *data = [NSData dataWithBytes:vertices length:sizeof(vertices)];
+SCNGeometrySource *vertexSource, *normalSource, *tcoordSource;
+
+vertexSource = [SCNGeometrySource geometrySourceWithData:data
+                                                semantic:SCNGeometrySourceSemanticVertex
+                                             vectorCount:VERTEX_COUNT
+                                         floatComponents:YES
+                                     componentsPerVector:3 // x, y, z
+                                       bytesPerComponent:sizeof(float)
+                                              dataOffset:offsetof(MyVertex, x)
+                                              dataStride:sizeof(MyVertex)];
+
+normalSource = [SCNGeometrySource geometrySourceWithData:data
+                                                semantic:SCNGeometrySourceSemanticNormal
+                                             vectorCount:VERTEX_COUNT
+                                         floatComponents:YES
+                                     componentsPerVector:3 // nx, ny, nz
+                                       bytesPerComponent:sizeof(float)
+                                              dataOffset:offsetof(MyVertex, nx)
+                                              dataStride:sizeof(MyVertex)];
+
+tcoordSource = [SCNGeometrySource geometrySourceWithData:data
+                                                semantic:SCNGeometrySourceSemanticTexcoord
+                                             vectorCount:VERTEX_COUNT
+                                         floatComponents:YES
+                                     componentsPerVector:2 // s, t
+                                       bytesPerComponent:sizeof(float)
+                                              dataOffset:offsetof(MyVertex, s)
+                                              dataStride:sizeof(MyVertex)];
+
+// 创建几何体的元素数据（用于连接顶点的数据）
+NSInteger indices[] = {0, 1, 2, 0, 2, 3};
+NSData *indexData = [NSData dataWithBytes:indices length:sizeof(indices)];
+SCNGeometryElement *element = [SCNGeometryElement geometryElementWithData:indexData 
+                                                           primitiveType:SCNGeometryPrimitiveTypeTriangles 
+                                                          primitiveCount:2 
+                                                           bytesPerIndex:sizeof(NSInteger)];
+
+// 根据源数据和元素数据创建几何体
+SCNGeometry *geometry = [SCNGeometry geometryWithSources:@[vertexSource, normalSource, tcoordSource] elements:@[element]];
+
+// 创建一个节点并将几何体附加到该节点上
+SCNNode *customNode = [SCNNode nodeWithGeometry:geometry];
